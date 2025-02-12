@@ -1,5 +1,7 @@
 // Initialize transactions and categories as empty arrays
 let transactions = [];
+let totalIncome = 0;
+let messageToPrint = '';
 let categorySums = {
     "Income/Transfers": 0,
     "Recurring Payments": 0,
@@ -8,6 +10,9 @@ let categorySums = {
     "Shopping": 0,
     "Others": 0
 };
+
+// Establish socket connection
+const socket = io();
 
 // Function to categorize transactions based on full_transactions.json data
 function categorizeTransaction(description) {
@@ -19,10 +24,23 @@ function categorizeTransaction(description) {
         return "Food";
     } else if (description.includes("Mta") || description.includes("Paygo") || description.includes("Lyft")) {
         return "Transport";
-    } else if (description.includes("Merci Market") || description.includes("Duane Reade") || description.includes("Magvend")|| description.includes("Musinsa")) {
+    } else if (description.includes("Merci Market") || description.includes("Duane Reade") || description.includes("Magvend") || description.includes("Musinsa")) {
         return "Shopping";
     } else {
         return "Others";
+    }
+}
+
+// Function to determine the message based on total income
+function determineMessage(totalIncome) {
+    if (totalIncome < 500) {
+        return "World class Free Lifestyle. In Path with rats";
+    } else if (totalIncome < 1000) {
+        return "Join the 10b1b now! with your friends and live a happy life.";
+    } else if (totalIncome >= 1000 && totalIncome <= 2000) {
+        return "Welcome to 1b1b";
+    } else {
+        return "You have a luxurious life ahead!";
     }
 }
 
@@ -60,11 +78,11 @@ function loadCategoryTotals() {
     printReceiptEffect(); // Now that rows are appended, trigger the receipt expansion
 }
 
-
 // Function to load transactions into the table and calculate category sums
 function loadTransactions() {
     
-    // Reset category sums
+    // Reset category sums and total income
+    totalIncome = 0;
     categorySums = {
         "Income/Transfers": 0,
         "Recurring Payments": 0,
@@ -77,17 +95,25 @@ function loadTransactions() {
     transactions.forEach(transaction => {
         const category = categorizeTransaction(transaction.description);
         categorySums[category] += transaction.amount;
+
+        if (category === "Income/Transfers" && transaction.amount > 0) {
+            totalIncome += transaction.amount;
+        }
     });
+
+    // Determine the message to print based on the total income
+    messageToPrint = determineMessage(totalIncome);
 
     // Update the category totals in the table
     loadCategoryTotals();
 
     // After loading transactions, update the category chart
-     printReceiptEffect()
+    printReceiptEffect();
+
+    // Log the message to print and send it to the server via socket
+    console.log("Message to print:", messageToPrint);
+    socket.emit('message', { message: messageToPrint });
 }
-
-// Function to create a pie chart for categories
-
 
 // Function to handle file upload
 document.getElementById('fileInput').addEventListener('change', function(event) {
@@ -111,32 +137,32 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
     }
 });
 
-//map
+// Map initialization
 var map = L.map('map').setView([40.7128, -74.0060], 12); // Center map on New York
 
-        // Step 4: Add a Tile Layer (from OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+// Add a Tile Layer (from OpenStreetMap)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
 
-        // Step 5: Add Markers for Each Transaction Location
-        var locations = [
-            { name: "Champion Pizza", lat: 40.7371, lon: -73.9929 },
-            { name: "Sprove Market Place", lat: 40.7282, lon: -74.0776 },
-            { name: "Merci Market", lat: 40.7580, lon: -73.9855 },
-            { name: "Barn Joo - Union Sq", lat: 40.7359, lon: -73.9911 },
-            { name: "Joe Coffee - Gover", lat: 40.7506, lon: -73.9937 },
-            { name: "Duane Reade Sto 110 NE Jersey City NJ", lat: 40.7282, lon: -74.0776 },
-            { name: "Magvend LLC Farmingdale NY", lat: 40.7326, lon: -73.4466 },
-            { name: "Tst* Joe Coffee - Gover New York NY", lat: 40.7506, lon: -73.9937 },
-            { name: "Barn Joo - Union Sq New York NY", lat: 40.7367, lon: -73.9906 },
-            { name: "Path Tapp Paygo Cp New Jersey NJ", lat: 40.7323, lon: -74.0621 },
-            { name: "Metro Market Space B New York NY", lat: 40.7527, lon: -73.9772 }
-                ];
+// Add Markers for Each Transaction Location
+var locations = [
+    { name: "Champion Pizza", lat: 40.7371, lon: -73.9929 },
+    { name: "Sprove Market Place", lat: 40.7282, lon: -74.0776 },
+    { name: "Merci Market", lat: 40.7580, lon: -73.9855 },
+    { name: "Barn Joo - Union Sq", lat: 40.7359, lon: -73.9911 },
+    { name: "Joe Coffee - Gover", lat: 40.7506, lon: -73.9937 },
+    { name: "Duane Reade Sto 110 NE Jersey City NJ", lat: 40.7282, lon: -74.0776 },
+    { name: "Magvend LLC Farmingdale NY", lat: 40.7326, lon: -73.4466 },
+    { name: "Tst* Joe Coffee - Gover New York NY", lat: 40.7506, lon: -73.9937 },
+    { name: "Barn Joo - Union Sq New York NY", lat: 40.7367, lon: -73.9906 },
+    { name: "Path Tapp Paygo Cp New Jersey NJ", lat: 40.7323, lon: -74.0621 },
+    { name: "Metro Market Space B New York NY", lat: 40.7527, lon: -73.9772 }
+];
 
-        locations.forEach(function(location) {
-            L.marker([location.lat, location.lon])
-                .addTo(map)
-                .bindPopup(location.name)
-                .openPopup();
-        });
+locations.forEach(function(location) {
+    L.marker([location.lat, location.lon])
+        .addTo(map)
+        .bindPopup(location.name)
+        .openPopup();
+});

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transaction Visualization</title>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js'></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
@@ -42,7 +43,37 @@
 
 </div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    
+    <script>
+        var socket = io();
+
+        // Handle form submission for file upload
+        document.getElementById('uploadForm').onsubmit = function(e) {
+           e.preventDefault();
+
+           // Get the file input element
+           var fileInput = document.getElementById('fileInput');
+           var formData = new FormData();
+           formData.append('file', fileInput.files[0]);
+
+           // Send the file to the server via an AJAX request
+           var xhr = new XMLHttpRequest();
+           xhr.open('POST', '/upload', true);
+           xhr.onload = function () {
+               if (xhr.status === 200) {
+                   console.log('File uploaded and processed');
+               } else {
+                   console.log('Error: ' + xhr.responseText);
+               }
+           };
+           xhr.send(formData);
+        };
+
+        // Receive the message from the server and display it
+        socket.on('message', function(data) {
+           console.log('Message from server:', data.message);
+           document.getElementById('messageOutput').innerHTML = 'Message to print: ' + data.message;
+        });
+     </script>
     <script src="script.js"></script>
 </body>
 </html>
